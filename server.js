@@ -5,12 +5,14 @@ require("dotenv").config();
 const app = express();
 app.use(express.json());
 
+// Health check
 app.get("/", (req, res) => {
   res.send("✅ Stripe backend is live");
 });
 
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
+// 1. Create a Custom account
 app.post("/create-account", async (req, res) => {
   try {
     const account = await stripe.accounts.create({
@@ -24,18 +26,19 @@ app.post("/create-account", async (req, res) => {
   }
 });
 
-app.post("/create-account-link", async (req, res) => {
+// 2. Create onboarding session for embedded Stripe SDK
+app.post("/create-account-session", async (req, res) => {
   try {
     const { accountId } = req.body;
 
-    const accountLink = await stripe.accountLinks.create({
+    const session = await stripe.accountSessions.create({
       account: accountId,
-      refresh_url: "https://viddycall.com/reauth",
-      return_url: "https://viddycall.com/success",
-      type: "account_onboarding"
+      components: {
+        account_onboarding: { enabled: true }
+      }
     });
 
-    res.json({ url: accountLink.url });
+    res.json({ clientSecret: session.client_secret });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
