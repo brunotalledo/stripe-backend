@@ -5,6 +5,11 @@ require("dotenv").config();
 const app = express();
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.send("✅ Stripe backend is live");
+});
+
+
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 app.post("/create-account", async (req, res) => {
