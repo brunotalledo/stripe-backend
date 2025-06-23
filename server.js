@@ -12,13 +12,16 @@ app.get("/", (req, res) => {
 
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-// 1. Create a Custom account
+// 1. Create a Custom account with transfers capability
 app.post("/create-account", async (req, res) => {
   try {
     const account = await stripe.accounts.create({
       type: "custom",
       country: "US",
-      email: "test@example.com"
+      email: "test@example.com",
+      capabilities: {
+        transfers: { requested: true }
+      }
     });
     res.json({ accountId: account.id });
   } catch (error) {
