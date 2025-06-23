@@ -6,6 +6,16 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		EB6C6AA12DBF8533002962B1 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = EB6C6AA02DBF8533002962B1 /* FirebaseAuth */; };
+		EB6C6AA32DBF8533002962B1 /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = EB6C6AA22DBF8533002962B1 /* FirebaseFirestore */; };
+		EBD7D5AA2DC192DC00806CB5 /* Stripe in Frameworks */ = {isa = PBXBuildFile; productRef = EBD7D5A92DC192DC00806CB5 /* Stripe */; };
+		EBD7D5AC2DC192DC00806CB5 /* StripeApplePay in Frameworks */ = {isa = PBXBuildFile; productRef = EBD7D5AB2DC192DC00806CB5 /* StripeApplePay */; };
+		EBD7D5AE2DC192DC00806CB5 /* StripeCardScan in Frameworks */ = {isa = PBXBuildFile; productRef = EBD7D5AD2DC192DC00806CB5 /* StripeCardScan */; };
+		EBD7D5B02DC192DC00806CB5 /* StripeConnect in Frameworks */ = {isa = PBXBuildFile; productRef = EBD7D5AF2DC192DC00806CB5 /* StripeConnect */; };
+		EBD7D5B22DC192DC00806CB5 /* StripeFinancialConnections in Frameworks */ = {isa = PBXBuildFile; productRef = EBD7D5B12DC192DC00806CB5 /* StripeFinancialConnections */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		EB54980D2DA9F030009802DC /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +62,13 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EB6C6AA12DBF8533002962B1 /* FirebaseAuth in Frameworks */,
+				EBD7D5AC2DC192DC00806CB5 /* StripeApplePay in Frameworks */,
+				EB6C6AA32DBF8533002962B1 /* FirebaseFirestore in Frameworks */,
+				EBD7D5B22DC192DC00806CB5 /* StripeFinancialConnections in Frameworks */,
+				EBD7D5AE2DC192DC00806CB5 /* StripeCardScan in Frameworks */,
+				EBD7D5B02DC192DC00806CB5 /* StripeConnect in Frameworks */,
+				EBD7D5AA2DC192DC00806CB5 /* Stripe in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +129,13 @@
 			);
 			name = VidCallApp;
 			packageProductDependencies = (
+				EB6C6AA02DBF8533002962B1 /* FirebaseAuth */,
+				EB6C6AA22DBF8533002962B1 /* FirebaseFirestore */,
+				EBD7D5A92DC192DC00806CB5 /* Stripe */,
+				EBD7D5AB2DC192DC00806CB5 /* StripeApplePay */,
+				EBD7D5AD2DC192DC00806CB5 /* StripeCardScan */,
+				EBD7D5AF2DC192DC00806CB5 /* StripeConnect */,
+				EBD7D5B12DC192DC00806CB5 /* StripeFinancialConnections */,
 			);
 			productName = VidCallApp;
 			productReference = EB5497FA2DA9F02E009802DC /* VidCallApp.app */;
@@ -186,7 +210,7 @@
 					};
 				};
 			};
-			buildConfigurationList = EB5497F52DA9F02E009802DC /* Build configuration list for PBXProject "VidCallApp" */;
+			buildConfigurationList = EB5497F52DA9F02E009802DC /* Build configuration list for PBXProject "Viddy" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -195,6 +219,10 @@
 			);
 			mainGroup = EB5497F12DA9F02E009802DC;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				EB6C6A9F2DBF8533002962B1 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				EBD7D5A82DC192DC00806CB5 /* XCRemoteSwiftPackageReference "stripe-ios" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = EB5497FB2DA9F02E009802DC /* Products */;
 			projectDirPath = "";
@@ -393,9 +421,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"VidCallApp/Preview Content\"";
+				DEVELOPMENT_TEAM = B87FXU7T49;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -421,9 +451,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"VidCallApp/Preview Content\"";
+				DEVELOPMENT_TEAM = B87FXU7T49;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -515,7 +547,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		EB5497F52DA9F02E009802DC /* Build configuration list for PBXProject "VidCallApp" */ = {
+		EB5497F52DA9F02E009802DC /* Build configuration list for PBXProject "Viddy" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				EB54981E2DA9F030009802DC /* Debug */,
@@ -552,6 +584,63 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		EB6C6A9F2DBF8533002962B1 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/firebase/firebase-ios-sdk.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.12.0;
+			};
+		};
+		EBD7D5A82DC192DC00806CB5 /* XCRemoteSwiftPackageReference "stripe-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/stripe/stripe-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 24.12.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		EB6C6AA02DBF8533002962B1 /* FirebaseAuth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EB6C6A9F2DBF8533002962B1 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseAuth;
+		};
+		EB6C6AA22DBF8533002962B1 /* FirebaseFirestore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EB6C6A9F2DBF8533002962B1 /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFirestore;
+		};
+		EBD7D5A92DC192DC00806CB5 /* Stripe */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EBD7D5A82DC192DC00806CB5 /* XCRemoteSwiftPackageReference "stripe-ios" */;
+			productName = Stripe;
+		};
+		EBD7D5AB2DC192DC00806CB5 /* StripeApplePay */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EBD7D5A82DC192DC00806CB5 /* XCRemoteSwiftPackageReference "stripe-ios" */;
+			productName = StripeApplePay;
+		};
+		EBD7D5AD2DC192DC00806CB5 /* StripeCardScan */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EBD7D5A82DC192DC00806CB5 /* XCRemoteSwiftPackageReference "stripe-ios" */;
+			productName = StripeCardScan;
+		};
+		EBD7D5AF2DC192DC00806CB5 /* StripeConnect */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EBD7D5A82DC192DC00806CB5 /* XCRemoteSwiftPackageReference "stripe-ios" */;
+			productName = StripeConnect;
+		};
+		EBD7D5B12DC192DC00806CB5 /* StripeFinancialConnections */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = EBD7D5A82DC192DC00806CB5 /* XCRemoteSwiftPackageReference "stripe-ios" */;
+			productName = StripeFinancialConnections;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = EB5497F22DA9F02E009802DC /* Project object */;
 }
