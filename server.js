@@ -15,16 +15,22 @@ const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 // 1. Create a Custom account with transfers capability
 app.post("/create-account", async (req, res) => {
   try {
+    const uniqueEmail = `test+${Date.now()}@example.com`;
+    console.log(`Creating account for email: ${uniqueEmail}`);
+
     const account = await stripe.accounts.create({
       type: "custom",
       country: "US",
-      email: "test@example.com",
+      email: uniqueEmail,
       capabilities: {
-        transfers: { requested: true }
-      }
+        transfers: { requested: true },
+      },
     });
+
+    console.log(`Account created: ${account.id}`);
     res.json({ accountId: account.id });
   } catch (error) {
+    console.error("Error creating account:", error);
     res.status(500).json({ error: error.message });
   }
 });
