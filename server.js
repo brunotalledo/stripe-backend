@@ -23,6 +23,7 @@ app.post("/create-account", async (req, res) => {
       country: "US",
       email: uniqueEmail,
       capabilities: {
+        card_payments: { requested: true },
         transfers: { requested: true },
       },
     });
