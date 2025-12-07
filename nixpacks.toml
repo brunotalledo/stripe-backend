@@ -2,11 +2,7 @@
 nixPkgs = ["nodejs-18_x"]
 
 [phases.install]
-cmds = [
-  "npm install --no-audit --no-fund",
-  "ls -la node_modules/stripe/cjs/ || echo 'Stripe not installed'",
-  "npm list stripe || echo 'Stripe check failed'"
-]
+cmds = ["npm install"]
 
 [phases.build]
 cmds = ["echo 'Build complete'"]
