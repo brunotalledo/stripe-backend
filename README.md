@@ -28,3 +28,4 @@ You can deploy this to:
 - Render: https://render.com
 
 Make sure to add `STRIPE_SECRET_KEY` to your environment variables.
+# Force rebuild
