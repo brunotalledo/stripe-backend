@@ -2,7 +2,10 @@
 nixPkgs = ["nodejs-18_x"]
 
 [phases.install]
-cmds = ["npm install"]
+cmds = [
+  "npm install --production=false",
+  "npm rebuild"
+]
 
 [phases.build]
 cmds = ["echo 'Build complete'"]
