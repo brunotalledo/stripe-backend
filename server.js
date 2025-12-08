@@ -393,8 +393,64 @@ app.post("/api/stripe/create-payout", async (req, res) => {
   }
 });
 
-// 8. Create Payout using Stripe's Payouts API
+// 8. Verify Bank Account (before allowing payouts)
+// This endpoint verifies a bank account using micro-deposits or instant verification
+app.post("/api/stripe/verify-bank-account", async (req, res) => {
+  try {
+    const { routingNumber, accountNumber, accountHolderName, accountType } = req.body;
+    
+    if (!routingNumber || !accountNumber || !accountHolderName) {
+      return res.status(400).json({ 
+        error: "routingNumber, accountNumber, and accountHolderName are required" 
+      });
+    }
+    
+    // Create a bank account token
+    const bankAccountToken = await stripe.tokens.create({
+      bank_account: {
+        country: "US",
+        currency: "usd",
+        account_holder_type: "individual",
+        account_number: accountNumber,
+        routing_number: routingNumber,
+        account_holder_name: accountHolderName,
+      },
+    });
+    
+    // Add the bank account as an external account to verify it
+    // Note: This will trigger micro-deposits for verification
+    const externalAccount = await stripe.accounts.createExternalAccount(
+      process.env.STRIPE_ACCOUNT_ID || "acct_default", // Your Stripe account ID
+      {
+        external_account: bankAccountToken.id,
+      }
+    );
+    
+    console.log(`✅ Bank account added for verification: ${externalAccount.id}`);
+    
+    res.json({
+      success: true,
+      externalAccountId: externalAccount.id,
+      verificationStatus: externalAccount.status,
+      requiresVerification: externalAccount.status !== "verified",
+      message: "Bank account added. Please check for micro-deposits (1-2 business days) to verify your account."
+    });
+  } catch (error) {
+    console.error("❌ Error verifying bank account:", error);
+    
+    if (error.code === "invalid_request_error" && error.message.includes("bank_account")) {
+      return res.status(400).json({ 
+        error: "Invalid bank account details. Please check your routing and account numbers." 
+      });
+    }
+    
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 9. Create Payout using Stripe's Payouts API
 // This endpoint creates a payout to a bank account
+// IMPORTANT: Bank account should be verified before using this endpoint
 app.post("/api/stripe/create-bank-payout", async (req, res) => {
   try {
     const { userId, amount, currency = "usd", routingNumber, accountNumber, accountHolderName, accountType } = req.body;
@@ -404,6 +460,10 @@ app.post("/api/stripe/create-bank-payout", async (req, res) => {
         error: "userId, valid amount, routingNumber, accountNumber, and accountHolderName are required" 
       });
     }
+    
+    // WARNING: This creates a payout without verification
+    // In production, you should verify the bank account first using the verify-bank-account endpoint
+    // and store the verified external account ID, then use that for payouts
     
     // Create a bank account token
     const bankAccountToken = await stripe.tokens.create({
@@ -420,6 +480,7 @@ app.post("/api/stripe/create-bank-payout", async (req, res) => {
     // Create a payout using the bank account token
     // Note: This requires your Stripe account to have payouts enabled
     // The bank account will be automatically added as an external account
+    // WARNING: If account number is wrong but valid, money goes to wrong account!
     const payout = await stripe.payouts.create({
       amount: Math.round(amount * 100), // Convert to cents
       currency: currency.toLowerCase(),
@@ -429,10 +490,12 @@ app.post("/api/stripe/create-bank-payout", async (req, res) => {
       metadata: {
         firebaseUserId: userId,
         accountHolderName: accountHolderName,
+        warning: "Unverified bank account - provider entered details directly"
       },
     });
     
     console.log(`✅ Created payout: ${payout.id} for amount: ${amount} ${currency}`);
+    console.log(`⚠️ WARNING: Bank account not verified - if account number is wrong, funds may go to wrong account!`);
     
     res.json({
       success: true,
@@ -440,6 +503,7 @@ app.post("/api/stripe/create-bank-payout", async (req, res) => {
       amount: amount,
       currency: currency,
       status: payout.status,
+      warning: "Bank account was not verified. If account details are incorrect, funds may be sent to the wrong account."
     });
   } catch (error) {
     console.error("❌ Error creating bank payout:", error);
