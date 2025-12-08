@@ -224,9 +224,55 @@ app.get("/api/stripe/payment-methods/:userId", async (req, res) => {
     const { userId } = req.params;
     
     // Get customer ID from mapping (in production, get from database)
-    const customerId = customerMap.get(userId);
+    let customerId = customerMap.get(userId);
+    
+    // If not in cache, search Stripe for existing customer by metadata
+    if (!customerId) {
+      try {
+        let foundCustomer = null;
+        let hasMore = true;
+        let startingAfter = null;
+        
+        // Search through customers in batches
+        while (hasMore && !foundCustomer) {
+          const searchParams = {
+            limit: 100,
+          };
+          if (startingAfter) {
+            searchParams.starting_after = startingAfter;
+          }
+          
+          const existingCustomers = await stripe.customers.list(searchParams);
+          
+          // Find customer with matching firebaseUserId in metadata
+          foundCustomer = existingCustomers.data.find(
+            customer => customer.metadata?.firebaseUserId === userId
+          );
+          
+          hasMore = existingCustomers.has_more;
+          if (existingCustomers.data.length > 0) {
+            startingAfter = existingCustomers.data[existingCustomers.data.length - 1].id;
+          }
+          
+          // Limit search to first 1000 customers to avoid timeout
+          if (existingCustomers.data.length < 100) {
+            hasMore = false;
+          }
+        }
+        
+        if (foundCustomer) {
+          customerId = foundCustomer.id;
+          // Cache it for future requests
+          customerMap.set(userId, customerId);
+          console.log(`✅ Found customer ${customerId} for user ${userId} when fetching payment methods`);
+        }
+      } catch (searchError) {
+        console.log(`⚠️ Could not search for customer when fetching payment methods: ${searchError.message}`);
+      }
+    }
     
     if (!customerId) {
+      console.log(`⚠️ No customer ID found for user: ${userId}`);
       return res.json({ paymentMethods: [] });
     }
     
@@ -245,7 +291,7 @@ app.get("/api/stripe/payment-methods/:userId", async (req, res) => {
       isDefault: false, // You can implement default logic
     }));
     
-    console.log(`✅ Retrieved ${formatted.length} payment methods for user: ${userId}`);
+    console.log(`✅ Retrieved ${formatted.length} payment methods for user: ${userId} (customer: ${customerId})`);
     
     res.json({ paymentMethods: formatted });
   } catch (error) {
