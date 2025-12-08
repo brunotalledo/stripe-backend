@@ -445,15 +445,21 @@ app.post("/api/stripe/create-bank-payout", async (req, res) => {
     console.error("❌ Error creating bank payout:", error);
     
     // Provide helpful error messages
-    if (error.code === "account_invalid" || error.message.includes("account")) {
+    if (error.code === "account_invalid" || error.message.includes("account") || error.code === "account_required") {
       return res.status(400).json({ 
-        error: "Your Stripe account needs to be set up for payouts. Please contact support." 
+        error: "Your Stripe account needs to be set up for payouts. Please complete the setup in your Stripe Dashboard: 1) Verify your identity, 2) Add a bank account, 3) Enable payouts in Settings → Payment methods → Payouts. Visit https://dashboard.stripe.com/settings/payouts" 
       });
     }
     
     if (error.code === "invalid_request_error" && error.message.includes("bank_account")) {
       return res.status(400).json({ 
         error: "Invalid bank account details. Please check your routing and account numbers." 
+      });
+    }
+    
+    if (error.code === "payouts_not_allowed" || error.message.includes("payout")) {
+      return res.status(400).json({ 
+        error: "Payouts are not enabled for your account. Please complete account verification and add a bank account in your Stripe Dashboard at https://dashboard.stripe.com/settings/payouts" 
       });
     }
     
