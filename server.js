@@ -84,21 +84,66 @@ app.post("/api/stripe/create-customer", async (req, res) => {
       return res.status(400).json({ error: "userId is required" });
     }
     
-    // Check if customer already exists
+    // Check if customer already exists in memory cache
     if (customerMap.has(userId)) {
       const customerId = customerMap.get(userId);
-      console.log(`✅ Returning existing customer: ${customerId} for user: ${userId}`);
+      console.log(`✅ Returning existing customer from cache: ${customerId} for user: ${userId}`);
       return res.json({ customerId });
     }
     
-    // Create new Stripe customer
+    // If not in cache, search Stripe for existing customer by metadata
+    // Note: This searches through customers, which can be slow for many customers
+    // In production, consider storing customer ID in Firestore from the app
+    try {
+      let foundCustomer = null;
+      let hasMore = true;
+      let startingAfter = null;
+      
+      // Search through customers in batches
+      while (hasMore && !foundCustomer) {
+        const searchParams = {
+          limit: 100,
+        };
+        if (startingAfter) {
+          searchParams.starting_after = startingAfter;
+        }
+        
+        const existingCustomers = await stripe.customers.list(searchParams);
+        
+        // Find customer with matching firebaseUserId in metadata
+        foundCustomer = existingCustomers.data.find(
+          customer => customer.metadata?.firebaseUserId === userId
+        );
+        
+        hasMore = existingCustomers.has_more;
+        if (existingCustomers.data.length > 0) {
+          startingAfter = existingCustomers.data[existingCustomers.data.length - 1].id;
+        }
+        
+        // Limit search to first 1000 customers to avoid timeout
+        if (existingCustomers.data.length < 100) {
+          hasMore = false;
+        }
+      }
+      
+      if (foundCustomer) {
+        // Cache it for future requests
+        customerMap.set(userId, foundCustomer.id);
+        console.log(`✅ Found existing Stripe customer: ${foundCustomer.id} for user: ${userId}`);
+        return res.json({ customerId: foundCustomer.id });
+      }
+    } catch (searchError) {
+      console.log(`⚠️ Could not search for existing customer, will create new one: ${searchError.message}`);
+    }
+    
+    // Create new Stripe customer if not found
     const customer = await stripe.customers.create({
       metadata: {
         firebaseUserId: userId,
       },
     });
     
-    // Store mapping (in production, save to database)
+    // Store mapping in memory cache
     customerMap.set(userId, customer.id);
     
     console.log(`✅ Created new Stripe customer: ${customer.id} for user: ${userId}`);
