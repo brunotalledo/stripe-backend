@@ -172,6 +172,7 @@ app.post("/api/stripe/create-payment-intent", async (req, res) => {
       automatic_payment_methods: {
         enabled: true,
       },
+      setup_future_usage: "off_session", // Save payment method for future use
     };
     
     // Add customer if provided
