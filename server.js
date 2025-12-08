@@ -284,11 +284,11 @@ app.get("/api/stripe/payment-methods/:userId", async (req, res) => {
     
     const formatted = paymentMethods.data.map(pm => ({
       token: pm.id,
-      type: pm.type,
-      last4: pm.card?.last4,
-      cardType: pm.card?.brand,
-      expirationMonth: pm.card?.exp_month?.toString(),
-      expirationYear: pm.card?.exp_year?.toString(),
+      type: pm.type || "card", // Default to "card" if type is missing
+      last4: pm.card?.last4 || "",
+      cardType: pm.card?.brand || "card", // Default to "card" if brand is missing
+      expirationMonth: pm.card?.exp_month?.toString() || "",
+      expirationYear: pm.card?.exp_year?.toString() || "",
       isDefault: false, // You can implement default logic
     }));
     
