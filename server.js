@@ -350,35 +350,67 @@ app.post("/api/stripe/create-payout", async (req, res) => {
 // This endpoint creates a payout to a bank account
 app.post("/api/stripe/create-bank-payout", async (req, res) => {
   try {
-    const { userId, amount, currency = "usd", bankAccountToken } = req.body;
+    const { userId, amount, currency = "usd", routingNumber, accountNumber, accountHolderName, accountType } = req.body;
     
-    if (!userId || !amount || amount <= 0 || !bankAccountToken) {
+    if (!userId || !amount || amount <= 0 || !routingNumber || !accountNumber || !accountHolderName) {
       return res.status(400).json({ 
-        error: "userId, valid amount, and bankAccountToken are required" 
+        error: "userId, valid amount, routingNumber, accountNumber, and accountHolderName are required" 
       });
     }
     
-    // Create a payout
-    // Note: In production, you should verify the bank account first
-    const payout = await stripe.payouts.create({
-      amount: Math.round(amount * 100), // Convert to cents
-      currency: currency.toLowerCase(),
-      method: "standard", // or "instant" for faster payouts (higher fees)
-      destination: bankAccountToken, // This should be a bank account token
-      metadata: {
-        firebaseUserId: userId,
-      },
-    });
+    // First, create a bank account token
+    // Note: In production, you should use Stripe's secure tokenization
+    // For now, we'll create the bank account directly on your Stripe account
+    // and then create a payout to it
     
-    console.log(`✅ Created payout: ${payout.id} for amount: ${amount} ${currency}`);
-    
-    res.json({
-      success: true,
-      payoutId: payout.id,
-      amount: amount,
-      currency: currency,
-      status: payout.status,
-    });
+    try {
+      // Create a bank account token using Stripe's API
+      // Note: This requires your Stripe account to be set up for payouts
+      const bankAccountToken = await stripe.tokens.create({
+        bank_account: {
+          country: "US",
+          currency: currency.toLowerCase(),
+          account_holder_type: "individual", // or "company"
+          account_number: accountNumber,
+          routing_number: routingNumber,
+          account_holder_name: accountHolderName,
+        },
+      });
+      
+      // Create a payout using the bank account token
+      const payout = await stripe.payouts.create({
+        amount: Math.round(amount * 100), // Convert to cents
+        currency: currency.toLowerCase(),
+        method: "standard", // or "instant" for faster payouts (higher fees)
+        source_type: "bank_account",
+        destination: bankAccountToken.bank_account.id,
+        metadata: {
+          firebaseUserId: userId,
+          accountHolderName: accountHolderName,
+        },
+      });
+      
+      console.log(`✅ Created payout: ${payout.id} for amount: ${amount} ${currency}`);
+      
+      res.json({
+        success: true,
+        payoutId: payout.id,
+        amount: amount,
+        currency: currency,
+        status: payout.status,
+      });
+    } catch (tokenError) {
+      // If token creation fails, try creating payout directly
+      // This requires your Stripe account to have bank account details stored
+      console.log("⚠️ Token creation failed, trying direct payout: ", tokenError.message);
+      
+      // Alternative: Create payout to external account
+      // This requires the bank account to be added as an external account first
+      // For now, return an error with instructions
+      return res.status(400).json({ 
+        error: "Bank account setup required. Please contact support to add your bank account for payouts." 
+      });
+    }
   } catch (error) {
     console.error("❌ Error creating bank payout:", error);
     res.status(500).json({ error: error.message });
