@@ -225,5 +225,31 @@ app.delete("/api/stripe/payment-methods/:paymentMethodId", async (req, res) => {
   }
 });
 
+// 6. Create Ephemeral Key (for showing saved payment methods in PaymentSheet)
+app.post("/api/stripe/create-ephemeral-key", async (req, res) => {
+  try {
+    const { customerId } = req.body;
+    
+    if (!customerId) {
+      return res.status(400).json({ error: "customerId is required" });
+    }
+    
+    // Create ephemeral key that expires in 1 hour
+    const ephemeralKey = await stripe.ephemeralKeys.create(
+      { customer: customerId },
+      { apiVersion: "2024-12-18.acacia" } // Use your Stripe API version
+    );
+    
+    console.log(`✅ Created ephemeral key for customer: ${customerId}`);
+    
+    res.json({
+      ephemeralKey: ephemeralKey.secret,
+    });
+  } catch (error) {
+    console.error("❌ Error creating ephemeral key:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
