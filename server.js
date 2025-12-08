@@ -296,5 +296,94 @@ app.post("/api/stripe/create-ephemeral-key", async (req, res) => {
   }
 });
 
+// 7. Create Payout (Transfer to connected account or direct payout)
+// For now, using Transfer API which requires a connected account
+// In production, you might want to use Stripe Connect for marketplace payouts
+app.post("/api/stripe/create-payout", async (req, res) => {
+  try {
+    const { userId, amount, currency = "usd", destination } = req.body;
+    
+    if (!userId || !amount || amount <= 0) {
+      return res.status(400).json({ error: "userId and valid amount are required" });
+    }
+    
+    // For Stripe payouts, we need either:
+    // 1. A connected account ID (Stripe Connect)
+    // 2. Bank account details for direct payout
+    
+    // Option 1: If using Stripe Connect (recommended for marketplaces)
+    if (destination && destination.startsWith("acct_")) {
+      // Transfer to connected account
+      const transfer = await stripe.transfers.create({
+        amount: Math.round(amount * 100), // Convert to cents
+        currency: currency.toLowerCase(),
+        destination: destination,
+        metadata: {
+          firebaseUserId: userId,
+        },
+      });
+      
+      console.log(`✅ Created transfer: ${transfer.id} for amount: ${amount} ${currency} to account: ${destination}`);
+      
+      return res.json({
+        success: true,
+        payoutId: transfer.id,
+        amount: amount,
+        currency: currency,
+      });
+    }
+    
+    // Option 2: Direct payout to bank account (requires bank account token)
+    // This is more complex and requires collecting bank account details
+    // For now, we'll return an error suggesting to use Stripe Connect
+    return res.status(400).json({ 
+      error: "Payout destination required. Please set up a connected account or bank account." 
+    });
+    
+  } catch (error) {
+    console.error("❌ Error creating payout:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 8. Alternative: Create Payout using Stripe's Payouts API (requires bank account)
+// This endpoint creates a payout to a bank account
+app.post("/api/stripe/create-bank-payout", async (req, res) => {
+  try {
+    const { userId, amount, currency = "usd", bankAccountToken } = req.body;
+    
+    if (!userId || !amount || amount <= 0 || !bankAccountToken) {
+      return res.status(400).json({ 
+        error: "userId, valid amount, and bankAccountToken are required" 
+      });
+    }
+    
+    // Create a payout
+    // Note: In production, you should verify the bank account first
+    const payout = await stripe.payouts.create({
+      amount: Math.round(amount * 100), // Convert to cents
+      currency: currency.toLowerCase(),
+      method: "standard", // or "instant" for faster payouts (higher fees)
+      destination: bankAccountToken, // This should be a bank account token
+      metadata: {
+        firebaseUserId: userId,
+      },
+    });
+    
+    console.log(`✅ Created payout: ${payout.id} for amount: ${amount} ${currency}`);
+    
+    res.json({
+      success: true,
+      payoutId: payout.id,
+      amount: amount,
+      currency: currency,
+      status: payout.status,
+    });
+  } catch (error) {
+    console.error("❌ Error creating bank payout:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
