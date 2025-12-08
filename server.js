@@ -127,6 +127,8 @@ app.post("/api/stripe/create-payment-intent", async (req, res) => {
       automatic_payment_methods: {
         enabled: true,
       },
+      // Explicitly enable Apple Pay
+      payment_method_types: ["card"],
     };
     
     // Add customer if provided
