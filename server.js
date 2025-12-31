@@ -198,11 +198,22 @@ app.delete('/api/stripe/payment-methods/:paymentMethodId', async (req, res) => {
 // 6. Create Stripe Connect Account (Express)
 app.post('/api/stripe/connect/create-account', async (req, res) => {
   try {
+    // Check if Stripe is configured
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error('❌ STRIPE_SECRET_KEY environment variable is not set');
+      return res.status(500).json({ 
+        error: 'Server configuration error: STRIPE_SECRET_KEY not set',
+        code: 'MISSING_STRIPE_KEY'
+      });
+    }
+    
     const { userId, email } = req.body;
     
     if (!userId) {
       return res.status(400).json({ error: 'userId is required' });
     }
+    
+    console.log(`🔄 Creating Stripe Connect account for user: ${userId}, email: ${email || 'none'}`);
     
     // Create Express account
     const account = await stripe.accounts.create({
@@ -226,35 +237,84 @@ app.post('/api/stripe/connect/create-account', async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Error creating Connect account:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Error details:', {
+      type: error.type,
+      code: error.code,
+      message: error.message,
+      raw: error.raw ? JSON.stringify(error.raw) : 'N/A'
+    });
+    
+    // Return more detailed error information
+    res.status(500).json({ 
+      error: error.message || 'Unknown error',
+      type: error.type || 'unknown',
+      code: error.code || 'unknown',
+      details: error.raw || null
+    });
   }
 });
 
 // 7. Create Account Link (for onboarding)
 app.post('/api/stripe/connect/create-account-link', async (req, res) => {
   try {
+    // Check if Stripe is configured
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error('❌ STRIPE_SECRET_KEY environment variable is not set');
+      return res.status(500).json({ 
+        error: 'Server configuration error: STRIPE_SECRET_KEY not set',
+        code: 'MISSING_STRIPE_KEY'
+      });
+    }
+    
     const { accountId, returnUrl, refreshUrl } = req.body;
     
     if (!accountId) {
       return res.status(400).json({ error: 'accountId is required' });
     }
     
+    console.log(`🔄 Creating account link for: ${accountId}`);
+    console.log(`   Return URL: ${returnUrl || 'default'}`);
+    console.log(`   Refresh URL: ${refreshUrl || 'default'}`);
+    
+    // Stripe requires HTTPS URLs or registered custom URL schemes
+    // For mobile apps, custom schemes like viddycall:// are supported
+    // But we'll use HTTPS fallbacks if needed
+    const finalReturnUrl = returnUrl || 'https://viddycall.com/return';
+    const finalRefreshUrl = refreshUrl || 'https://viddycall.com/refresh';
+    
+    console.log(`   Using return URL: ${finalReturnUrl}`);
+    console.log(`   Using refresh URL: ${finalRefreshUrl}`);
+    
     // Create account link for onboarding
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
-      refresh_url: refreshUrl || 'https://viddycall.com/refresh',
-      return_url: returnUrl || 'https://viddycall.com/return',
+      refresh_url: finalRefreshUrl,
+      return_url: finalReturnUrl,
       type: 'account_onboarding',
     });
     
     console.log(`✅ Created account link for: ${accountId}`);
+    console.log(`   Link URL: ${accountLink.url.substring(0, 50)}...`);
     
     res.json({
       url: accountLink.url,
     });
   } catch (error) {
     console.error('❌ Error creating account link:', error);
-    res.status(500).json({ error: error.message });
+    console.error('Error details:', {
+      type: error.type,
+      code: error.code,
+      message: error.message,
+      raw: error.raw ? JSON.stringify(error.raw) : 'N/A'
+    });
+    
+    // Return more detailed error information
+    res.status(500).json({ 
+      error: error.message || 'Unknown error',
+      type: error.type || 'unknown',
+      code: error.code || 'unknown',
+      details: error.raw || null
+    });
   }
 });
 
@@ -342,7 +402,14 @@ app.get('/api/health', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Stripe API server running on port ${PORT}`);
-  console.log(`🔑 Stripe key configured: ${process.env.STRIPE_SECRET_KEY ? 'YES' : 'NO'}`);
+  const hasKey = !!process.env.STRIPE_SECRET_KEY;
+  console.log(`🔑 Stripe key configured: ${hasKey ? 'YES' : 'NO'}`);
+  if (hasKey) {
+    const keyPreview = process.env.STRIPE_SECRET_KEY.substring(0, 7) + '...' + process.env.STRIPE_SECRET_KEY.substring(process.env.STRIPE_SECRET_KEY.length - 4);
+    console.log(`🔑 Key preview: ${keyPreview}`);
+  } else {
+    console.error('⚠️ WARNING: STRIPE_SECRET_KEY is not set! Stripe endpoints will fail.');
+  }
 });
 
 module.exports = app;
