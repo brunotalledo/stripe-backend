@@ -254,7 +254,185 @@ app.post('/api/stripe/connect/create-account', async (req, res) => {
   }
 });
 
-// 7. Create Account Link (for onboarding)
+// 7. Create OAuth Link (for connecting existing Stripe accounts)
+// NOTE: This requires setting up a Stripe Connect platform application
+// Get your client_id from: https://dashboard.stripe.com/settings/applications
+app.get('/api/stripe/connect/oauth-link', async (req, res) => {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error('❌ STRIPE_SECRET_KEY environment variable is not set');
+      return res.status(500).json({ 
+        error: 'Server configuration error: STRIPE_SECRET_KEY not set',
+        code: 'MISSING_STRIPE_KEY'
+      });
+    }
+    
+    // Check if client_id is configured
+    if (!process.env.STRIPE_CLIENT_ID) {
+      console.error('❌ STRIPE_CLIENT_ID environment variable is not set');
+      return res.status(500).json({ 
+        error: 'OAuth Connect requires STRIPE_CLIENT_ID. Please set up a Stripe Connect platform application and add STRIPE_CLIENT_ID to Railway environment variables.',
+        code: 'MISSING_CLIENT_ID',
+        instructions: '1. Go to https://dashboard.stripe.com/settings/applications\n2. Create a Connect platform application\n3. Copy the Client ID\n4. Add STRIPE_CLIENT_ID to Railway environment variables'
+      });
+    }
+    
+    const { returnUrl, refreshUrl, userId } = req.query;
+    
+    if (!returnUrl || !refreshUrl) {
+      return res.status(400).json({ 
+        error: 'returnUrl and refreshUrl query parameters are required' 
+      });
+    }
+    
+    console.log(`🔄 Creating OAuth link for existing Stripe account`);
+    console.log(`   User ID: ${userId || 'none'}`);
+    console.log(`   Return URL: ${returnUrl}`);
+    console.log(`   Refresh URL: ${refreshUrl}`);
+    
+    // Create OAuth link for connecting existing Stripe account
+    const oauthLink = await stripe.oauth.authorizeUrl({
+      client_id: process.env.STRIPE_CLIENT_ID,
+      scope: 'read_write',
+      redirect_uri: returnUrl,
+      state: userId || 'default', // Pass user ID in state to identify user after OAuth
+    });
+    
+    console.log(`✅ Created OAuth link`);
+    
+    res.json({
+      url: oauthLink,
+    });
+  } catch (error) {
+    console.error('❌ Error creating OAuth link:', error);
+    console.error('Error details:', {
+      type: error.type,
+      code: error.code,
+      message: error.message,
+    });
+    
+    res.status(500).json({ 
+      error: error.message || 'Unknown error',
+      type: error.type || 'unknown',
+      code: error.code || 'unknown',
+    });
+  }
+});
+
+// 7.5. OAuth Callback (exchange code for account ID)
+app.post('/api/stripe/connect/oauth-callback', async (req, res) => {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return res.status(500).json({ 
+        error: 'Server configuration error: STRIPE_SECRET_KEY not set',
+        code: 'MISSING_STRIPE_KEY'
+      });
+    }
+    
+    const { code, userId } = req.body;
+    
+    if (!code) {
+      return res.status(400).json({ 
+        error: 'OAuth code is required' 
+      });
+    }
+    
+    console.log(`🔄 Exchanging OAuth code for account ID for user: ${userId || 'unknown'}`);
+    
+    // Exchange OAuth code for account ID
+    const response = await stripe.oauth.token({
+      grant_type: 'authorization_code',
+      code: code,
+    });
+    
+    const accountId = response.stripe_user_id;
+    
+    if (!accountId) {
+      return res.status(400).json({ 
+        error: 'Failed to get account ID from OAuth response' 
+      });
+    }
+    
+    console.log(`✅ OAuth account connected: ${accountId}`);
+    
+    res.json({
+      accountId: accountId,
+      accountType: 'standard', // OAuth connects Standard accounts
+    });
+  } catch (error) {
+    console.error('❌ Error exchanging OAuth code:', error);
+    res.status(500).json({ 
+      error: error.message || 'Unknown error',
+      type: error.type || 'unknown',
+      code: error.code || 'unknown',
+    });
+  }
+});
+
+// 8. Manual Account Link (for testing - link existing account ID)
+// This endpoint allows you to manually set an existing Stripe account ID for testing
+// In production, you'd use OAuth Connect instead
+app.post('/api/stripe/connect/link-existing-account', async (req, res) => {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error('❌ STRIPE_SECRET_KEY environment variable is not set');
+      return res.status(500).json({ 
+        error: 'Server configuration error: STRIPE_SECRET_KEY not set',
+        code: 'MISSING_STRIPE_KEY'
+      });
+    }
+    
+    const { userId, accountId } = req.body;
+    
+    if (!userId || !accountId) {
+      return res.status(400).json({ 
+        error: 'userId and accountId are required' 
+      });
+    }
+    
+    console.log(`🔄 Linking existing Stripe account ${accountId} for user: ${userId}`);
+    
+    // Verify the account exists and is accessible
+    try {
+      const account = await stripe.accounts.retrieve(accountId);
+      console.log(`✅ Verified account exists: ${account.id}, type: ${account.type}`);
+      
+      // Check if it's a Connect account (should start with acct_)
+      if (!accountId.startsWith('acct_')) {
+        return res.status(400).json({ 
+          error: 'Invalid account ID format. Must be a Stripe Connect account ID (starts with acct_)',
+          code: 'INVALID_ACCOUNT_ID'
+        });
+      }
+      
+      res.json({
+        accountId: account.id,
+        accountType: account.type,
+        detailsSubmitted: account.details_submitted,
+        chargesEnabled: account.charges_enabled,
+        payoutsEnabled: account.payouts_enabled,
+        message: 'Account linked successfully. You still need to complete onboarding if not already done.'
+      });
+    } catch (error) {
+      if (error.code === 'resource_missing') {
+        return res.status(404).json({ 
+          error: 'Account not found. Make sure the account ID is correct and accessible with your Stripe key.',
+          code: 'ACCOUNT_NOT_FOUND'
+        });
+      }
+      throw error;
+    }
+  } catch (error) {
+    console.error('❌ Error linking existing account:', error);
+    res.status(500).json({ 
+      error: error.message || 'Unknown error',
+      type: error.type || 'unknown',
+      code: error.code || 'unknown',
+    });
+  }
+});
+
+// 7. Create Account Link (for onboarding Express accounts)
 app.post('/api/stripe/connect/create-account-link', async (req, res) => {
   try {
     // Check if Stripe is configured
