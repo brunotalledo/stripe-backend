@@ -454,22 +454,57 @@ app.post('/api/stripe/connect/create-account-link', async (req, res) => {
     console.log(`   Return URL: ${returnUrl || 'default'}`);
     console.log(`   Refresh URL: ${refreshUrl || 'default'}`);
     
-    // Stripe requires HTTPS URLs or registered custom URL schemes
-    // For mobile apps, custom schemes like viddycall:// are supported
-    // But we'll use HTTPS fallbacks if needed
-    const finalReturnUrl = returnUrl || 'https://viddycall.com/return';
-    const finalRefreshUrl = refreshUrl || 'https://viddycall.com/refresh';
+    // Stripe may reject custom URL schemes (viddycall://)
+    // Try custom scheme first, but have HTTPS fallback ready
+    // If custom scheme fails, we'll catch and retry with HTTPS
+    let finalReturnUrl = returnUrl || 'https://viddycall.com/return';
+    let finalRefreshUrl = refreshUrl || 'https://viddycall.com/refresh';
+    
+    // If custom URL scheme provided, try it first
+    // But Stripe might require HTTPS, so we'll handle that in the error
+    if (returnUrl && returnUrl.startsWith('http')) {
+      finalReturnUrl = returnUrl;
+    } else if (returnUrl && returnUrl.startsWith('viddycall://')) {
+      // Try custom scheme - if it fails, we'll retry with HTTPS
+      finalReturnUrl = returnUrl;
+    }
+    
+    if (refreshUrl && refreshUrl.startsWith('http')) {
+      finalRefreshUrl = refreshUrl;
+    } else if (refreshUrl && refreshUrl.startsWith('viddycall://')) {
+      finalRefreshUrl = refreshUrl;
+    }
     
     console.log(`   Using return URL: ${finalReturnUrl}`);
     console.log(`   Using refresh URL: ${finalRefreshUrl}`);
     
     // Create account link for onboarding
-    const accountLink = await stripe.accountLinks.create({
-      account: accountId,
-      refresh_url: finalRefreshUrl,
-      return_url: finalReturnUrl,
-      type: 'account_onboarding',
-    });
+    let accountLink;
+    try {
+      accountLink = await stripe.accountLinks.create({
+        account: accountId,
+        refresh_url: finalRefreshUrl,
+        return_url: finalReturnUrl,
+        type: 'account_onboarding',
+      });
+    } catch (urlError) {
+      // If custom URL scheme was rejected, try with HTTPS URLs
+      if (urlError.code === 'invalid_request_error' && 
+          (urlError.message?.includes('url') || urlError.message?.includes('redirect'))) {
+        console.log(`⚠️ Custom URL scheme rejected, trying HTTPS URLs instead`);
+        finalReturnUrl = 'https://viddycall.com/stripe-connect-return';
+        finalRefreshUrl = 'https://viddycall.com/stripe-connect-refresh';
+        
+        accountLink = await stripe.accountLinks.create({
+          account: accountId,
+          refresh_url: finalRefreshUrl,
+          return_url: finalReturnUrl,
+          type: 'account_onboarding',
+        });
+      } else {
+        throw urlError;
+      }
+    }
     
     console.log(`✅ Created account link for: ${accountId}`);
     console.log(`   Link URL: ${accountLink.url.substring(0, 50)}...`);
