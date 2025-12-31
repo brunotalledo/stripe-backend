@@ -454,24 +454,24 @@ app.post('/api/stripe/connect/create-account-link', async (req, res) => {
     console.log(`   Return URL: ${returnUrl || 'default'}`);
     console.log(`   Refresh URL: ${refreshUrl || 'default'}`);
     
-    // Stripe may reject custom URL schemes (viddycall://)
+    // Stripe may reject custom URL schemes (viddcall://)
     // Try custom scheme first, but have HTTPS fallback ready
     // If custom scheme fails, we'll catch and retry with HTTPS
-    let finalReturnUrl = returnUrl || 'https://viddycall.com/return';
-    let finalRefreshUrl = refreshUrl || 'https://viddycall.com/refresh';
+    let finalReturnUrl = returnUrl || 'https://viddcall.com/return';
+    let finalRefreshUrl = refreshUrl || 'https://viddcall.com/refresh';
     
     // If custom URL scheme provided, try it first
     // But Stripe might require HTTPS, so we'll handle that in the error
     if (returnUrl && returnUrl.startsWith('http')) {
       finalReturnUrl = returnUrl;
-    } else if (returnUrl && returnUrl.startsWith('viddycall://')) {
+    } else if (returnUrl && returnUrl.startsWith('viddcall://')) {
       // Try custom scheme - if it fails, we'll retry with HTTPS
       finalReturnUrl = returnUrl;
     }
     
     if (refreshUrl && refreshUrl.startsWith('http')) {
       finalRefreshUrl = refreshUrl;
-    } else if (refreshUrl && refreshUrl.startsWith('viddycall://')) {
+    } else if (refreshUrl && refreshUrl.startsWith('viddcall://')) {
       finalRefreshUrl = refreshUrl;
     }
     
@@ -492,8 +492,8 @@ app.post('/api/stripe/connect/create-account-link', async (req, res) => {
       if (urlError.code === 'invalid_request_error' && 
           (urlError.message?.includes('url') || urlError.message?.includes('redirect'))) {
         console.log(`⚠️ Custom URL scheme rejected, trying HTTPS URLs instead`);
-        finalReturnUrl = 'https://viddycall.com/stripe-connect-return';
-        finalRefreshUrl = 'https://viddycall.com/stripe-connect-refresh';
+        finalReturnUrl = 'https://viddcall.com/stripe-connect-return';
+        finalRefreshUrl = 'https://viddcall.com/stripe-connect-refresh';
         
         accountLink = await stripe.accountLinks.create({
           account: accountId,
