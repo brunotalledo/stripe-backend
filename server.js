@@ -3,19 +3,17 @@
 
 const express = require('express');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const admin = require('firebase-admin');
 const cors = require('cors');
 
 const app = express();
 
-// Initialize Firebase Admin (if you have service account)
-// Uncomment and configure if you want to use Firestore for customer mapping
-/*
-const serviceAccount = require('./path-to-service-account.json');
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
-*/
+// Firebase Admin is not needed for this server
+// If you need Firestore in the future, uncomment and install firebase-admin:
+// const admin = require('firebase-admin');
+// const serviceAccount = require('./path-to-service-account.json');
+// admin.initializeApp({
+//   credential: admin.credential.cert(serviceAccount)
+// });
 
 // Middleware
 app.use(cors());
