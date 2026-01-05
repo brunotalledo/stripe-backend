@@ -541,7 +541,67 @@ app.get('/api/stripe/connect/account/:accountId/status', async (req, res) => {
   }
 });
 
-// 9. Transfer to Provider (when call ends)
+// 9. Create Login Link for Connect Account (direct dashboard access)
+app.post('/api/stripe/connect/create-login-link', async (req, res) => {
+  try {
+    // Check if Stripe is configured
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error('❌ STRIPE_SECRET_KEY environment variable is not set');
+      return res.status(500).json({ 
+        error: 'Server configuration error: STRIPE_SECRET_KEY not set',
+        code: 'MISSING_STRIPE_KEY'
+      });
+    }
+    
+    const { accountId } = req.body;
+    
+    if (!accountId) {
+      return res.status(400).json({ error: 'accountId is required' });
+    }
+    
+    console.log(`🔄 Creating login link for Connect account: ${accountId}`);
+    
+    // First, get the account type to verify it's Express
+    const account = await stripe.accounts.retrieve(accountId);
+    console.log(`   Account type: ${account.type}`);
+    console.log(`   Account ID: ${account.id}`);
+    
+    // Create a login link for the Connect account
+    // For Express accounts, this should redirect to connect.stripe.com
+    // The login link is a full URL with authentication tokens
+    const loginLink = await stripe.accounts.createLoginLink(accountId);
+    
+    console.log(`✅ Created login link for account: ${accountId}`);
+    console.log(`   Full Login URL: ${loginLink.url}`);
+    console.log(`   URL starts with: ${loginLink.url.substring(0, 50)}...`);
+    console.log(`   Account type: ${account.type} (Express accounts should go to connect.stripe.com)`);
+    
+    // Verify the URL format
+    if (!loginLink.url || !loginLink.url.startsWith('http')) {
+      throw new Error('Invalid login link URL returned from Stripe');
+    }
+    
+    res.json({
+      url: loginLink.url,
+      accountType: account.type,
+    });
+  } catch (error) {
+    console.error('❌ Error creating login link:', error);
+    console.error('Error details:', {
+      type: error.type,
+      code: error.code,
+      message: error.message,
+    });
+    
+    res.status(500).json({ 
+      error: error.message || 'Unknown error',
+      type: error.type || 'unknown',
+      code: error.code || 'unknown',
+    });
+  }
+});
+
+// 10. Transfer to Provider (when call ends)
 app.post('/api/stripe/connect/transfer-to-provider', async (req, res) => {
   try {
     const { amount, providerConnectAccountId, callId, metadata } = req.body;
