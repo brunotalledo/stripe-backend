@@ -30,30 +30,67 @@ const customerMap = new Map();
 // 1. Create or Get Customer
 app.post('/api/stripe/create-customer', async (req, res) => {
   try {
-    const { userId } = req.body;
+    const { userId, username, customerId: existingCustomerId } = req.body;
     
     if (!userId) {
       return res.status(400).json({ error: 'userId is required' });
     }
     
-    // Check if customer already exists
+    // If customerId is provided (existing customer), just update the name if username is provided
+    if (existingCustomerId) {
+      if (username) {
+        try {
+          await stripe.customers.update(existingCustomerId, {
+            name: username,
+          });
+          console.log(`✅ Updated existing customer name: ${existingCustomerId} with username: ${username}`);
+        } catch (updateError) {
+          console.log(`⚠️ Could not update customer name: ${updateError.message}`);
+          // Continue anyway - not critical
+        }
+      }
+      return res.json({ customerId: existingCustomerId });
+    }
+    
+    // Check if customer already exists in memory map
     if (customerMap.has(userId)) {
       const customerId = customerMap.get(userId);
+      
+      // If username is provided and customer exists, update the customer name
+      if (username) {
+        try {
+          await stripe.customers.update(customerId, {
+            name: username,
+          });
+          console.log(`✅ Updated existing customer name: ${customerId} with username: ${username}`);
+        } catch (updateError) {
+          console.log(`⚠️ Could not update customer name: ${updateError.message}`);
+          // Continue anyway - not critical
+        }
+      }
+      
       console.log(`✅ Returning existing customer: ${customerId} for user: ${userId}`);
       return res.json({ customerId });
     }
     
-    // Create new Stripe customer
-    const customer = await stripe.customers.create({
+    // Create new Stripe customer with username as name
+    const customerData = {
       metadata: {
         firebaseUserId: userId,
       },
-    });
+    };
+    
+    // Add name if username is provided
+    if (username) {
+      customerData.name = username;
+    }
+    
+    const customer = await stripe.customers.create(customerData);
     
     // Store mapping (in production, save to database)
     customerMap.set(userId, customer.id);
     
-    console.log(`✅ Created new Stripe customer: ${customer.id} for user: ${userId}`);
+    console.log(`✅ Created new Stripe customer: ${customer.id} for user: ${userId}${username ? ` with name: ${username}` : ''}`);
     
     res.json({
       customerId: customer.id,
