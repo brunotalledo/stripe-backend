@@ -7,6 +7,10 @@ const cors = require('cors');
 
 const app = express();
 
+// ✅ Default business website to prefill in Stripe Express onboarding (no profiles needed)
+const DEFAULT_BUSINESS_WEBSITE_URL = 'https://videocallpros.com';
+const DEFAULT_PRODUCT_DESCRIPTION = 'Live video consultation services';
+
 // Firebase Admin is not needed for this server
 // If you need Firestore in the future, uncomment and install firebase-admin:
 // const admin = require('firebase-admin');
@@ -252,7 +256,7 @@ app.post('/api/stripe/connect/create-account', async (req, res) => {
     
     console.log(`🔄 Creating Stripe Connect account for user: ${userId}, email: ${email || 'none'}`);
     
-    // Create Express account
+    // ✅ Create Express account (prefill website with videocallpros.com)
     const account = await stripe.accounts.create({
       type: 'express',
       country: 'US',
@@ -261,12 +265,17 @@ app.post('/api/stripe/connect/create-account', async (req, res) => {
         card_payments: { requested: true },
         transfers: { requested: true },
       },
+      business_profile: {
+        url: DEFAULT_BUSINESS_WEBSITE_URL,
+        product_description: DEFAULT_PRODUCT_DESCRIPTION,
+      },
       metadata: {
         firebaseUserId: userId,
       },
     });
     
     console.log(`✅ Created Stripe Connect account: ${account.id} for user: ${userId}`);
+    console.log(`   Prefilled business website: ${DEFAULT_BUSINESS_WEBSITE_URL}`);
     
     res.json({
       accountId: account.id,
@@ -517,6 +526,20 @@ app.post('/api/stripe/connect/create-account-link', async (req, res) => {
     
     console.log(`   Using return URL: ${finalReturnUrl}`);
     console.log(`   Using refresh URL: ${finalRefreshUrl}`);
+
+    // ✅ Ensure the business website is set on the Connect account (covers older accounts created before this change)
+    try {
+      await stripe.accounts.update(accountId, {
+        business_profile: {
+          url: DEFAULT_BUSINESS_WEBSITE_URL,
+          product_description: DEFAULT_PRODUCT_DESCRIPTION,
+        },
+      });
+      console.log(`✅ Ensured business website is set for: ${accountId} → ${DEFAULT_BUSINESS_WEBSITE_URL}`);
+    } catch (updateErr) {
+      console.log(`⚠️ Could not update business_profile for ${accountId}: ${updateErr.message}`);
+      // Continue anyway - not critical; onboarding link can still be created
+    }
     
     // Create account link for onboarding
     // Stripe only accepts HTTPS URLs
@@ -707,4 +730,3 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
-
