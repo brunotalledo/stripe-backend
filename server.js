@@ -265,10 +265,11 @@ app.post('/api/stripe/connect/create-account', async (req, res) => {
         card_payments: { requested: true },
         transfers: { requested: true },
       },
-      business_profile: {
-        url: DEFAULT_BUSINESS_WEBSITE_URL,
-        product_description: DEFAULT_PRODUCT_DESCRIPTION,
-      },
+   business_profile: {
+  url: DEFAULT_BUSINESS_WEBSITE_URL,
+  product_description: DEFAULT_PRODUCT_DESCRIPTION,
+  mcc: '7392',
+},
       metadata: {
         firebaseUserId: userId,
       },
